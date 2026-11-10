@@ -8,13 +8,16 @@ The output must be an actual longest cubic subsequence, not only its length.
 
 ## Project status
 
-The exact exhaustive-search baseline is implemented and tested. The faster algorithm and scalability experiments are still pending.
+The exact exhaustive-search baseline and the first exact split-and-DP algorithm are implemented and tested. Further optimizations, special-case investigations, and scalability experiments are still pending.
 
 ## Code files
 
 - `baseline.py`: implemented exact exhaustive-search reference algorithm.
-- `fasterAlgo.py`: planned improved algorithm; not implemented yet.
-- `tests/test_baseline.py`: supporting correctness tests, not a separate main algorithm.
+- `fasterAlgo.py`: implemented exact split-and-DP algorithm using three-sequence LCS.
+- `tests/test_baseline.py`: supporting baseline correctness tests.
+- `tests/test_fasterAlgo.py`: supporting LCS, differential, and command-line tests.
+
+The files under `tests/` are supporting checks, not additional main algorithms.
 
 Requires Python 3 and its standard library only; no packages need installing.
 
@@ -57,9 +60,80 @@ There are at most `2^n` subsets of the `n` positions. The baseline examines only
 python3 -m unittest discover -s tests -v
 ```
 
-The suite contains 15 explicit cases, all 511 strings over `{a,b}` of lengths zero through eight, and command-line checks for the assignment example and empty input. It checks that each returned string is cubic, is a subsequence of the input, and has the expected optimal length.
+The baseline tests contain 15 explicit cases, all 511 strings over `{a,b}` of lengths zero through eight, and command-line checks for the assignment example and empty input. It checks that each returned string is cubic, is a subsequence of the input, and has the expected optimal length.
 
-For exhaustive small-input comparison, an independent oracle enumerates possible repeated blocks over the input alphabet and checks whether three copies occur as a subsequence using a left-to-right scan. It does not reuse the baseline's position-subset enumeration. All three test methods passed during initial validation. These tests support the implementation; the correctness argument establishes the general result.
+For exhaustive small-input comparison, an independent oracle enumerates possible repeated blocks over the input alphabet and checks whether three copies occur as a subsequence using a left-to-right scan. It does not reuse the baseline's position-subset enumeration. All three baseline test methods passed during initial validation. These tests support the implementation; the correctness argument establishes the general result.
+
+## Faster algorithm: split-and-DP
+
+Run the new algorithm with the same input format:
+
+```bash
+python3 fasterAlgo.py "atcgtatgcatgca"
+python3 fasterAlgo.py "abxabyab"
+python3 fasterAlgo.py ""
+```
+
+The public function in each algorithm file is named `longest_cubic_subsequence(sequence)` and returns the complete cubic subsequence as a string. The command-line output fields match those of the baseline. Different optimal strings are allowed; compare lengths and validity, not exact strings.
+
+### Splitting the input
+
+For each pair of cuts `1 <= i < j <= n - 1`, form three nonempty consecutive regions:
+
+- `A = sequence[:i]`
+- `B = sequence[i:j]`
+- `C = sequence[j:]`
+
+Find an actual longest common subsequence `X` of these regions and consider `X * 3`. Keep a longest block across all cuts. Inputs shorter than three have no such splits and return the empty string.
+
+For example, `abx | aby | ab` has common subsequence `ab`, yielding the cubic subsequence `ababab`.
+
+### Three-sequence LCS recurrence
+
+Let `D[a][b][c]` be the LCS length of `A[:a]`, `B[:b]`, and `C[:c]`.
+
+- If any index is zero, the value is zero.
+- If `A[a-1] == B[b-1] == C[c-1]`, the value is `1 + D[a-1][b-1][c-1]`.
+- Otherwise, the value is the maximum of `D[a-1][b][c]`, `D[a][b-1][c]`, and `D[a][b][c-1]`.
+
+Fill the table in increasing index order. Reconstruct a common subsequence by walking backwards: collect a character and decrement all three indices on a match; otherwise move to a predecessor with the same optimal value. Reverse the collected characters at the end. Ties are resolved deterministically by checking the first, then second, then third index.
+
+### Correctness argument
+
+**LCS table.** If a prefix is empty, no nonempty common subsequence exists. If the three final characters match, an optimal common subsequence can align its last character with these three final positions. Removing that character leaves a common subsequence of the three shortened prefixes, and any optimal common subsequence of those prefixes can be extended by the matching character. This gives the diagonal-plus-one recurrence. If the final characters do not all match, a common subsequence cannot use all three final positions; at least one is unused. The three predecessor states cover these possibilities. Induction on the sum of prefix lengths proves the table values optimal. Backtracking follows these same choices and recovers a sequence of that optimal length.
+
+**Feasibility of a cube.** A common subsequence of the three regions can be selected once from each region. Since the regions are disjoint and consecutive, concatenating these selections gives a valid cubic subsequence of the original input.
+
+**Optimality over cuts.** Take a nonempty optimal cube and its chosen positions. Place one cut immediately after the last chosen position of its first copy, and a second after the last chosen position of its second copy. Each copy then lies in a separate region of an enumerated split. Its repeated block is a common subsequence of those three regions, so the LCS for this split is at least as long. Every candidate is feasible, so no candidate can exceed the true optimum. Taking the longest over all splits therefore returns an optimal cube. If no nonempty cube exists, every split has empty LCS and the empty answer is correct.
+
+### Complexity and limitations
+
+There are `(n-1)(n-2)/2 = O(n^2)` splits for `n >= 3`. For a split with positive region lengths `p, q, r`, its DP table takes `O(p*q*r)` time and space. Reconstructing the block takes `O(p+q+r)` time. Slicing the input also takes `O(n)` per split.
+
+Each split therefore takes at most `O(n^3)` time, giving an overall `O(n^5)` upper bound. Only one split's DP table is retained at a time, so auxiliary space is `O(n^3)`, not `O(n^5)`. Bounds count table entries under the usual RAM model; Python objects add practical overhead.
+
+This is a polynomial-time improvement over the exponential baseline, but fifth-degree growth and cubic space still limit scalability. It is not guaranteed to be faster on every small input. This first version recomputes the LCS table for every split and does not yet prune cuts or reuse tables.
+
+The recurrence and exhaustive enumeration of cuts are straightforward applications of standard techniques. They are the starting implementation, not a claim of original research. Project-specific improvements and special cases remain to be investigated and supported by evidence.
+
+### DP validation
+
+Run the full suite using the existing command:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+All nine test methods passed after adding the DP algorithm. In addition to the original baseline checks, the new tests cover:
+
+- 3,375 triples of binary strings of lengths zero through three, checking LCS length against independent subsequence enumeration and checking reconstruction in all three inputs.
+- All 511 binary inputs of lengths zero through eight, comparing cubic answer lengths against the exact baseline and checking validity.
+- 120 reproducible random inputs over `abcd`, with lengths zero through fourteen and seed 360, compared against the baseline.
+- The same 15 explicit cases used for the baseline, including the assignment example, ties, case-sensitive symbols, Unicode, and spaces.
+- Two length-36 inputs with known full-length cubic answers.
+- Command-line checks for the assignment example, empty input, and a sequence containing spaces.
+
+These are correctness checks, not a completed timing or memory study.
 
 ## Development milestones
 
@@ -92,4 +166,4 @@ Check correctness before larger timing experiments. Keep observations distinct f
 
 The main report is limited to five pages, with additional evidence in the appendix. Preserve meaningful incremental commits, experimental results, and debugging observations throughout development.
 
-Record standard techniques, project-specific insights, and relevant AI assistance accurately. ChatGPT drafted the initial README and plan, the baseline implementation, supporting tests, and the baseline explanation. The implemented baseline is standard exhaustive search, not an original algorithmic contribution. Small-input correctness checks were run; faster-algorithm design and scalability experiments are still pending. Update this record as the project develops.
+Record standard techniques, project-specific insights, and relevant AI assistance accurately. ChatGPT drafted the initial README and plan, both algorithm implementations, supporting tests, and the algorithm explanations. The baseline is standard exhaustive search, and the first faster version applies standard three-sequence LCS to all pairs of cuts; neither is presented as an original research contribution. Correctness checks were run for both implementations. Further improvements and scalability experiments are still pending. Update this record as the project develops.
