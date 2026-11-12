@@ -16,6 +16,7 @@ The exact exhaustive-search baseline and the first exact split-and-DP algorithm 
 - `fasterAlgo.py`: implemented exact split-and-DP algorithm using three-sequence LCS.
 - `tests/test_baseline.py`: supporting baseline correctness tests.
 - `tests/test_fasterAlgo.py`: supporting LCS, differential, and command-line tests.
+- `experiments/benchmark.py`: supporting script for reproducible pilot timing experiments.
 
 The files under `tests/` are supporting checks, not additional main algorithms.
 
@@ -162,8 +163,80 @@ Compare both algorithms on identical inputs. Record input length, alphabet size,
 
 Check correctness before larger timing experiments. Keep observations distinct from predictions and theoretical bounds.
 
+## Pilot timing experiment
+
+From the project root, run:
+
+```bash
+python3 experiments/benchmark.py --output results/mac_pilot
+```
+
+The output directory must not already exist. To repeat the experiment,
+choose a new directory, such as `results/mac_pilot_2`.
+
+### Inputs
+
+The experiment uses lengths 6, 9, 12, 15, and 18.
+
+For each length, it generates:
+
+- Three random strings over `ab`.
+- Three random strings over `abcdefgh`.
+- One string consisting entirely of `a`.
+- One string consisting of three copies of a generated block.
+
+This produces 40 input cases. Random generation uses seed 360.
+Random samples may coincide; they are separate draws rather than
+guaranteed distinct strings.
+
+Both algorithms receive exactly the same inputs. The generated strings
+are saved in the CSV files so the precise inputs remain available.
+
+### Measurement method
+
+Each algorithm receives one untimed warm-up run per input, followed
+by three timed runs. The execution order alternates across repetitions
+and input cases.
+
+Timing uses `time.perf_counter` around the algorithm call only.
+Input generation, correctness checks, printing, and file writing are
+outside the timed interval.
+
+Each returned answer is checked to ensure that it is cubic and is a
+subsequence of the input. Answer lengths must agree between algorithms.
+For the single-symbol and three-copy families, the answer must also
+reach the known optimum: the full input length.
+
+### Output files
+
+- `timings.csv`: 240 measured runs, including the input, algorithm,
+  repetition, execution order, runtime in seconds, and answer length.
+- `summary.csv`: 80 rows containing the minimum, median, and maximum
+  runtime for each input and algorithm.
+- `metadata.json`: Python and operating-system information, machine
+  architecture, timestamps, experiment settings, and SHA-256 hashes
+  of the algorithm files and benchmark script.
+
+Warm-up runs are excluded from the CSV timing measurements.
+Files are written after all input cases finish successfully.
+
+### Interpreting the results
+
+Compare median runtimes for the same case ID. Dividing the baseline
+median by the split-DP median gives the measured speedup for that case:
+a value greater than 1 means split-DP was faster.
+
+Use the minimum and maximum to examine variation between repeated
+runs. Very short measurements are sensitive to background activity
+and timing overhead.
+
+This is a preliminary timing experiment. It does not measure memory
+usage or establish the largest practical input size. Three random
+samples per family and length provide limited coverage, so broader
+experiments are still needed before drawing general conclusions.
+
 ## Report and development evidence
 
 The main report is limited to five pages, with additional evidence in the appendix. Preserve meaningful incremental commits, experimental results, and debugging observations throughout development.
 
-Record standard techniques, project-specific insights, and relevant AI assistance accurately. I drafted the initial README and plan, both algorithm implementations, supporting tests, and the algorithm explanations. The baseline is standard exhaustive search, and the first faster version applies standard three-sequence LCS to all pairs of cuts; neither is presented as an original research contribution. Correctness checks were run for both implementations. Further improvements and scalability experiments are still pending. Update this record as the project develops.
+Record standard techniques and project-specific insights accurately. The baseline is standard exhaustive search, and the first faster version applies standard three-sequence LCS to all pairs of cuts; neither is presented as an original research contribution. Correctness checks were run for both implementations. Further improvements and scalability experiments are still pending. Update this record as the project develops.
