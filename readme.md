@@ -240,3 +240,47 @@ experiments are still needed before drawing general conclusions.
 The main report is limited to five pages, with additional evidence in the appendix. Preserve meaningful incremental commits, experimental results, and debugging observations throughout development.
 
 Record standard techniques and project-specific insights accurately. The baseline is standard exhaustive search, and the first faster version applies standard three-sequence LCS to all pairs of cuts; neither is presented as an original research contribution. Correctness checks were run for both implementations. Further improvements and scalability experiments are still pending. Update this record as the project develops.
+
+## Region-length pruning variant
+
+`prunedAlgo.py` adds a region-length bound to the split-and-DP search.
+It reuses the three-sequence LCS helper from `fasterAlgo.py`.
+
+For cuts i and j, the region lengths are i, j-i, and n-j.
+Any common subsequence of these regions has length at most their
+minimum. If this minimum is no greater than the best block length
+already found, the split cannot improve the answer and is skipped.
+
+### Why skipping is safe
+
+The stored best block always produces a valid cubic subsequence.
+Every skipped split has an upper bound no greater than that block's
+length, so it cannot contain a strictly better answer. All remaining
+splits use the original exact LCS algorithm. Therefore pruning
+preserves the optimal answer length.
+
+A split that can only tie the current answer may also be skipped
+because the task requires one longest answer, not every longest answer.
+
+### Complexity and evaluation
+
+The worst-case upper bounds remain O(n^5) time and O(n^3) auxiliary
+space. Pruning may avoid DP table construction, but its practical
+effect depends on the input and the best block found so far.
+
+The original DP implementation remains available for comparison.
+The saved Mac pilot timings describe the original algorithms;
+they do not measure this pruning variant.
+
+Run the pruning variant and the correctness suite with:
+
+```bash
+python3 prunedAlgo.py "atcgtatgcatgca"
+python3 -m unittest discover -s tests -v
+```
+
+`tests/test_prunedAlgo.py` checks all binary inputs through length
+eight, 120 seeded random inputs, known cases, and command-line use.
+
+The next experiment will compare the original and pruned DP versions
+on identical inputs, including cases where pruning offers little benefit.
