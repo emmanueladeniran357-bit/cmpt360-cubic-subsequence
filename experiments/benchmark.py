@@ -9,6 +9,7 @@ from pathlib import Path
 import platform
 import random
 from statistics import median
+from string import ascii_letters
 import sys
 from time import perf_counter
 
@@ -19,6 +20,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from baseline import longest_cubic_subsequence as baseline
 from fasterAlgo import longest_cubic_subsequence as split_dp
+from prunedAlgo import longest_cubic_subsequence as pruned_dp
 
 
 SEED = 360
@@ -32,17 +34,21 @@ ALGORITHMS = (
 )
 
 
-def generate_cases():
-    """Generate identical input cases whenever the seed is unchanged."""
+def generate_cases(
+    lengths=LENGTHS,
+    random_samples=RANDOM_SAMPLES,
+    include_distinct=False,
+):
+    """Generate identical cases for the same settings and seed."""
     rng = random.Random(SEED)
     cases = []
 
-    for length in LENGTHS:
+    for length in lengths:
         for family, alphabet in (
             ("random_binary", "ab"),
             ("random_eight_symbols", "abcdefgh"),
         ):
-            for sample in range(1, RANDOM_SAMPLES + 1):
+            for sample in range(1, random_samples + 1):
                 sequence = "".join(
                     rng.choice(alphabet) for _ in range(length)
                 )
@@ -54,6 +60,13 @@ def generate_cases():
             rng.choice("abcdefgh") for _ in range(length // 3)
         )
         cases.append(("three_copies", 1, block * 3))
+
+        if include_distinct:
+            if length > len(ascii_letters):
+                raise ValueError(
+                    "Distinct-symbol cases support lengths up to 52."
+                )
+            cases.append(("all_distinct", 1, ascii_letters[:length]))
 
     return cases
 
@@ -88,14 +101,42 @@ def file_hash(filename):
     return hashlib.sha256(contents).hexdigest()
 
 
-def run_experiment(output_dir):
+def run_experiment(output_dir, pruning=False):
     # Require a fresh directory so previous results are preserved.
     if output_dir.exists():
         raise FileExistsError(
             f"{output_dir} already exists. Choose a new output directory."
         )
 
-    cases = generate_cases()
+    if pruning:
+        algorithms = (
+            ("split_dp", split_dp),
+            ("pruned_dp", pruned_dp),
+        )
+        lengths = (12, 18, 24, 30, 36)
+        random_samples = 5
+        repetitions = 6
+        source_files = (
+            "fasterAlgo.py",
+            "prunedAlgo.py",
+            "experiments/benchmark.py",
+        )
+    else:
+        algorithms = ALGORITHMS
+        lengths = LENGTHS
+        random_samples = RANDOM_SAMPLES
+        repetitions = REPETITIONS
+        source_files = (
+            "baseline.py",
+            "fasterAlgo.py",
+            "experiments/benchmark.py",
+        )
+
+    cases = generate_cases(
+        lengths=lengths,
+        random_samples=random_samples,
+        include_distinct=pruning,
+    )
     timings = []
     summaries = []
 
@@ -107,20 +148,19 @@ def run_experiment(output_dir):
         "operating_system_release": platform.release(),
         "machine_architecture": platform.machine(),
         "seed": SEED,
-        "lengths": list(LENGTHS),
-        "random_samples_per_family_per_length": RANDOM_SAMPLES,
+        "experiment": "pruning_comparison" if pruning else "baseline_pilot",
+        "algorithms": [name for name, _ in algorithms],
+        "includes_all_distinct_inputs": pruning,
+        "lengths": list(lengths),
+        "random_samples_per_family_per_length": random_samples,
         "warmup_runs_per_algorithm_per_case": 1,
-        "timed_runs_per_algorithm_per_case": REPETITIONS,
+        "timed_runs_per_algorithm_per_case": repetitions,
         "case_count": len(cases),
         "timer": "time.perf_counter",
         "measurement": "algorithm call only",
         "source_sha256": {
             filename: file_hash(filename)
-            for filename in (
-                "baseline.py",
-                "fasterAlgo.py",
-                "experiments/benchmark.py",
-            )
+            for filename in source_files
         },
     }
 
@@ -134,7 +174,7 @@ def run_experiment(output_dir):
         # One untimed warm-up per algorithm, also checked for correctness.
         warmup_lengths = []
         warmup_order = (
-            ALGORITHMS if case_index % 2 == 0 else ALGORITHMS[::-1]
+            algorithms if case_index % 2 == 0 else algorithms[::-1]
         )
 
         for name, algorithm in warmup_order:
@@ -154,14 +194,17 @@ def run_experiment(output_dir):
             if expected_length != len(sequence):
                 raise ValueError("Failed a known full-length optimum.")
 
-        samples = {name: [] for name, _ in ALGORITHMS}
+        if family == "all_distinct" and expected_length != 0:
+            raise ValueError("Failed the known empty optimum.")
 
-        for repetition in range(1, REPETITIONS + 1):
+        samples = {name: [] for name, _ in algorithms}
+
+        for repetition in range(1, repetitions + 1):
             # Alternate the first algorithm across runs and input cases.
             if (case_index + repetition - 1) % 2 == 0:
-                order = ALGORITHMS
+                order = algorithms
             else:
-                order = ALGORITHMS[::-1]
+                order = algorithms[::-1]
 
             for position, (name, algorithm) in enumerate(order, start=1):
                 start = perf_counter()
@@ -189,7 +232,7 @@ def run_experiment(output_dir):
                     "answer_length": len(answer),
                 })
 
-        for name, _ in ALGORITHMS:
+        for name, _ in algorithms:
             values = samples[name]
             summaries.append({
                 "case_id": case_index + 1,
@@ -225,7 +268,7 @@ def run_experiment(output_dir):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare the baseline and split-DP algorithms."
+        description="Compare cubic subsequence algorithms on reproducible inputs."
     )
     parser.add_argument(
         "--output",
@@ -233,10 +276,15 @@ def main():
         required=True,
         help="New directory in which to save experiment results.",
     )
+    parser.add_argument(
+        "--pruning",
+        action="store_true",
+        help="Compare original and pruned DP using the larger input suite.",
+    )
     args = parser.parse_args()
 
     try:
-        run_experiment(args.output)
+        run_experiment(args.output, pruning=args.pruning)
     except (OSError, ValueError) as error:
         parser.exit(1, f"Experiment failed: {error}\n")
 
