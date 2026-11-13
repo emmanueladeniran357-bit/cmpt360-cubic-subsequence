@@ -284,3 +284,49 @@ eight, 120 seeded random inputs, known cases, and command-line use.
 
 The next experiment will compare the original and pruned DP versions
 on identical inputs, including cases where pruning offers little benefit.
+
+## Pruning comparison experiment
+
+Run the original and pruned DP algorithms on identical inputs:
+
+```bash
+python3 experiments/benchmark.py --pruning --output results/mac_pruning
+```
+
+The output directory must not already exist. Use a new directory
+for each experiment.
+
+This mode uses lengths 12, 18, 24, 30, and 36. At each length,
+it generates five random binary strings, five random eight-symbol
+strings, one single-symbol string, one three-copy string, and one
+all-distinct string. Random generation uses seed 360.
+
+There are 65 input cases. Each algorithm receives one warm-up and
+six measured runs per case, producing 780 timing rows and 130
+summary rows. Each algorithm runs first in three measured repetitions
+per case. Validation and file writing are outside the timed interval.
+
+Every answer is checked for cubic structure and subsequence validity.
+The algorithms must agree on answer length. Single-symbol and
+three-copy inputs must achieve the full input length; all-distinct
+inputs must return an empty answer.
+
+Both DP versions share the same LCS helper, so agreement alone is
+not an independent proof of correctness. The separate correctness
+suite also compares against exhaustive search and checks the helper
+against an independent oracle.
+
+All-distinct inputs test a limitation of region-length pruning:
+the best block remains empty, and every nonempty split has a positive
+bound, so no DP calculation is skipped.
+
+The output files contain raw timings, per-input summaries, environment
+details, experiment settings, and hashes of the relevant source files.
+
+For each case, divide the original DP median by the pruned DP median.
+A ratio above one means pruning was faster; a ratio below one means
+it was slower. Examine results separately by input family and length.
+
+This experiment measures runtime, not memory usage. Its conclusions
+apply to the tested inputs and environment; it does not establish
+a better worst-case asymptotic bound.
