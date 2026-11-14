@@ -1,0 +1,34 @@
+{
+  "started_utc": "2026-11-13T22:08:55.020746+00:00",
+  "python_version": "3.9.6",
+  "python_implementation": "CPython",
+  "operating_system": "Darwin",
+  "operating_system_release": "25.6.0",
+  "machine_architecture": "arm64",
+  "seed": 360,
+  "experiment": "pruning_comparison",
+  "algorithms": [
+    "split_dp",
+    "pruned_dp"
+  ],
+  "includes_all_distinct_inputs": true,
+  "lengths": [
+    12,
+    18,
+    24,
+    30,
+    36
+  ],
+  "random_samples_per_family_per_length": 5,
+  "warmup_runs_per_algorithm_per_case": 1,
+  "timed_runs_per_algorithm_per_case": 6,
+  "case_count": 65,
+  "timer": "time.perf_counter",
+  "measurement": "algorithm call only",
+  "source_sha256": {
+    "fasterAlgo.py": "aa371297a08c7efd254f65468c208a7677b1f4fdd832550c98f6af92c1b6107c",
+    "prunedAlgo.py": "6303c9c02de1e2cffa27cf646f0c0abdd6915358ffecd527e9d1a025fcc51d66",
+    "experiments/benchmark.py": "4108b4dd5b8d8c3dc0175ee53f596281f2b35743fc7d7790f5bb23374fe07363"
+  },
+  "finished_utc": "2026-11-13T22:09:39.115406+00:00"
+}
