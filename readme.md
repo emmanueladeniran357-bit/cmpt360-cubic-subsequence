@@ -330,3 +330,44 @@ it was slower. Examine results separately by input family and length.
 This experiment measures runtime, not memory usage. Its conclusions
 apply to the tested inputs and environment; it does not establish
 a better worst-case asymptotic bound.
+
+## Counting work avoided by pruning
+
+Run a separate untimed analysis on the saved pruning experiment:
+
+```bash
+python3 experiments/count_pruning.py \
+  --summary results/mac_pruning/summary.csv \
+  --output results/mac_pruning_counts.csv
+```
+
+The output file must not already exist.
+
+The script uses each saved pruned-DP input and temporarily wraps the
+existing LCS helper to count calls. It does not duplicate the pruning
+rule or modify either algorithm file.
+
+For each input, it records the total, evaluated, and skipped splits.
+It also records the number of original, evaluated, and avoided DP
+recurrence updates. A split with region lengths p, q, and r performs
+p*q*r such updates.
+
+These update counts exclude table initialization, slicing,
+reconstruction, and pruning checks. They measure one component of
+computational work, not elapsed time or memory consumption.
+
+The returned answer is checked for cubic structure, subsequence
+validity, and agreement with the saved answer length. The output
+records SHA-256 hashes of the input summary and relevant source files.
+
+Compare counts and timings using case_id. Avoided-update fraction
+is avoided_dp_updates / original_dp_updates when the denominator
+is positive. Skipped-split fraction is skipped_splits / total_splits
+when at least one split exists.
+
+A large reduction in recurrence updates may help explain a speedup,
+but the reduction factor need not equal the runtime speedup because
+other work and measurement variation also affect runtime.
+
+The supporting tests check empty and short inputs, a distinct-symbol
+case with no pruning, and a repeated-symbol case with known counts.
