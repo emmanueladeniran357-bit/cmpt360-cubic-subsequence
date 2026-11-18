@@ -371,3 +371,36 @@ other work and measurement variation also affect runtime.
 
 The supporting tests check empty and short inputs, a distinct-symbol
 case with no pruning, and a repeated-symbol case with known counts.
+
+## Practical input limits
+
+Run from the project root on macOS or Linux:
+
+```bash
+python3 experiments/scalability.py --output results/mac_scalability
+```
+
+Use a fresh output directory. Each solver gets one trial per input in
+a fresh Python process. The study uses a 5-second algorithm budget and
+a 256 MiB resident memory budget per worker. The parent samples memory
+about every 50 milliseconds and kills a worker observed over budget.
+Completed trials also report the operating system's peak resident memory.
+A separate 7-second wall timeout includes startup and is recorded explicitly.
+
+The three families are random binary, single symbol, and all distinct.
+At each length, all active algorithms receive the same input. Binary
+inputs use seed 360 plus the length. Every completed answer is checked
+for cubic structure and subsequence validity. The structured inputs have
+known optimal lengths. Completed solvers must agree on answer length.
+
+For each solver and family, report the largest tested length within both
+budgets and the first tested length that exceeded a budget or timed out.
+Stop testing that pair after the first limit. If every trial passes,
+report success through the largest tested length. These are observations
+on a fixed grid with one input per family and length.
+
+The output contains trials.csv and metadata.json. In trials.csv, a killed
+worker has no algorithm runtime or answer length. Its memory value is
+the highest observed sample. A completed worker reports peak memory
+including the Python interpreter. Use the earlier repeated-run experiments
+for median speedups.
