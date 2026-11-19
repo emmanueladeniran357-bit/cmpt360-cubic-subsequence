@@ -1,0 +1,45 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "machine": "arm64",
+  "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+  "lengths": [
+    12,
+    18,
+    21,
+    24,
+    27,
+    30,
+    36,
+    48,
+    60,
+    72,
+    96,
+    120,
+    144,
+    192,
+    240
+  ],
+  "families": [
+    "random_binary",
+    "single_symbol",
+    "all_distinct"
+  ],
+  "algorithms": [
+    "baseline",
+    "split_dp",
+    "pruned_dp"
+  ],
+  "binary_seed": "360 + input length",
+  "trials_per_case": 1,
+  "algorithm_seconds_limit": 5,
+  "worker_wall_seconds_limit": 7,
+  "rss_limit_mib": 256,
+  "poll_interval_seconds": 0.05,
+  "source_sha256": {
+    "baseline.py": "ccee9ec6ce0c4f23bbe6b817c1dafea74e840ceda2adc7eae6b00e4a915d0188",
+    "fasterAlgo.py": "aa371297a08c7efd254f65468c208a7677b1f4fdd832550c98f6af92c1b6107c",
+    "prunedAlgo.py": "6303c9c02de1e2cffa27cf646f0c0abdd6915358ffecd527e9d1a025fcc51d66",
+    "experiments/benchmark.py": "4108b4dd5b8d8c3dc0175ee53f596281f2b35743fc7d7790f5bb23374fe07363",
+    "experiments/scalability.py": "6a3cc3f9b9601fb8a287d3abedf4fec8d4b09b890195ea6447939c4a1694faee"
+  }
+}
