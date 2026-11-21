@@ -8,7 +8,7 @@ The output must be an actual longest cubic subsequence, not only its length.
 
 ## Project status
 
-The exact exhaustive-search baseline and the first exact split-and-DP algorithm are implemented and tested. Further optimizations, special-case investigations, and scalability experiments are still pending.
+All three algorithms are implemented and tested. The saved Mac results cover the pilot, pruning comparison, work counts, and scalability trials.
 
 ## Code files
 
@@ -36,7 +36,7 @@ Every character is a symbol, including spaces; comparisons are case-sensitive. Q
 
 For the assignment example, the baseline returns `X = atc`, `C = atcatcatc`, and length 9. This differs from the handout's `atgatgatg`, but both are valid optimal answers. The program prints the full cubic subsequence, its repeated block, its length, and elapsed algorithm time. Timings exclude argument parsing and printing.
 
-**Start with short inputs:** this baseline has exponential running time. Correctness checks are not a scalability study, and no largest practical input size has been established yet.
+**Start with short inputs:** this baseline has exponential running time. In the saved Mac scalability trials, the baseline passed at length 24 and timed out at the next tested length, 27, for all three input families.
 
 ## Baseline algorithm
 
@@ -115,7 +115,7 @@ Each split therefore takes at most `O(n^3)` time, giving an overall `O(n^5)` upp
 
 This is a polynomial-time improvement over the exponential baseline, but fifth-degree growth and cubic space still limit scalability. It is not guaranteed to be faster on every small input. This first version recomputes the LCS table for every split and does not yet prune cuts or reuse tables.
 
-The recurrence and exhaustive enumeration of cuts are straightforward applications of standard techniques. They are the starting implementation, not a claim of original research. Project-specific improvements and special cases remain to be investigated and supported by evidence.
+The recurrence and exhaustive enumeration of cuts are straightforward applications of standard techniques. They are the starting implementation, not a claim of original research. The region-length pruning and work-count sections below examine when this approach can skip tables.
 
 ### DP validation
 
@@ -157,9 +157,9 @@ These are correctness checks, not a completed timing or memory study.
 
 When optimal answers are not unique, compare their lengths and validity rather than requiring identical output strings.
 
-## Experimental plan
+## Experimental design
 
-Compare both algorithms on identical inputs. Record input length, alphabet size, input structure, elapsed time, and output length. Record the machine, Python version, random seeds, repetition count, and resource limits used for experiments.
+Each comparison uses identical inputs across solvers. The saved data and metadata record the input families and lengths, output lengths, timings, machine, Python version, random seeds, and settings for each experiment.
 
 Check correctness before larger timing experiments. Keep observations distinct from predictions and theoretical bounds.
 
@@ -168,7 +168,7 @@ Check correctness before larger timing experiments. Keep observations distinct f
 From the project root, run:
 
 ```bash
-python3 experiments/benchmark.py --output results/mac_pilot
+python3 experiments/benchmark.py --output results/rerun_pilot
 ```
 
 The output directory must not already exist. To repeat the experiment,
@@ -239,7 +239,7 @@ experiments are still needed before drawing general conclusions.
 
 The main report is limited to five pages, with additional evidence in the appendix. Preserve meaningful incremental commits, experimental results, and debugging observations throughout development.
 
-Record standard techniques and project-specific insights accurately. The baseline is standard exhaustive search, and the first faster version applies standard three-sequence LCS to all pairs of cuts; neither is presented as an original research contribution. Correctness checks were run for both implementations. Further improvements and scalability experiments are still pending. Update this record as the project develops.
+The baseline uses exhaustive search, and the split algorithm applies three-sequence LCS to every pair of cuts. The report analyzes the pruning bound on single-symbol and all-distinct inputs and compares its predictions with the saved work counts.
 
 ## Region-length pruning variant
 
@@ -282,7 +282,7 @@ python3 -m unittest discover -s tests -v
 `tests/test_prunedAlgo.py` checks all binary inputs through length
 eight, 120 seeded random inputs, known cases, and command-line use.
 
-The next experiment will compare the original and pruned DP versions
+The pruning experiment compares the original and pruned DP versions
 on identical inputs, including cases where pruning offers little benefit.
 
 ## Pruning comparison experiment
@@ -290,7 +290,7 @@ on identical inputs, including cases where pruning offers little benefit.
 Run the original and pruned DP algorithms on identical inputs:
 
 ```bash
-python3 experiments/benchmark.py --pruning --output results/mac_pruning
+python3 experiments/benchmark.py --pruning --output results/rerun_pruning
 ```
 
 The output directory must not already exist. Use a new directory
@@ -338,7 +338,7 @@ Run a separate untimed analysis on the saved pruning experiment:
 ```bash
 python3 experiments/count_pruning.py \
   --summary results/mac_pruning/summary.csv \
-  --output results/mac_pruning_counts.csv
+  --output results/rerun_counts.csv
 ```
 
 The output file must not already exist.
@@ -377,7 +377,7 @@ case with no pruning, and a repeated-symbol case with known counts.
 Run from the project root on macOS or Linux:
 
 ```bash
-python3 experiments/scalability.py --output results/mac_scalability
+python3 experiments/scalability.py --output results/rerun_scalability
 ```
 
 Use a fresh output directory. Each solver gets one trial per input in
